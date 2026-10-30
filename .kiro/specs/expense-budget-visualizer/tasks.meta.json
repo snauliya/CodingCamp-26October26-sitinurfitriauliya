@@ -1,0 +1,241 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Set up project file structure and HTML skeleton": [
+      {
+        "executionId": "269942ed-506b-4db0-a802-d2d64db17686",
+        "chatSessionId": "sess_80abd3a1-31a1-4b22-ae42-63b246e1095b",
+        "timestamp": 1793365505647
+      },
+      {
+        "executionId": "269942ed-506b-4db0-a802-d2d64db17686",
+        "chatSessionId": "sess_80abd3a1-31a1-4b22-ae42-63b246e1095b",
+        "timestamp": 1793365576061
+      }
+    ],
+    "2.1 Implement state initialisation and transition functions inside `app.js` using the IIFE namespace pattern": [
+      {
+        "executionId": "664fb0b0-1e59-42b5-bbec-2ffe525de2b8",
+        "chatSessionId": "sess_1e53d715-8aa7-4f46-b8ef-8314bc5a4f4d",
+        "timestamp": 1793365598290
+      },
+      {
+        "executionId": "664fb0b0-1e59-42b5-bbec-2ffe525de2b8",
+        "chatSessionId": "sess_1e53d715-8aa7-4f46-b8ef-8314bc5a4f4d",
+        "timestamp": 1793365636024
+      }
+    ],
+    "2. Implement the State module": [
+      {
+        "executionId": "664fb0b0-1e59-42b5-bbec-2ffe525de2b8",
+        "chatSessionId": "sess_1e53d715-8aa7-4f46-b8ef-8314bc5a4f4d",
+        "timestamp": 1793365636165
+      }
+    ],
+    "3.1 Implement `saveTransactions(transactions)` and `loadTransactions()` inside the IIFE namespace": [
+      {
+        "executionId": "b5801705-a33e-414c-a5bf-021357fe2602",
+        "chatSessionId": "sess_62880ff9-59d7-4a66-a3ff-ccaf7c05ea2b",
+        "timestamp": 1793365662905
+      },
+      {
+        "executionId": "b5801705-a33e-414c-a5bf-021357fe2602",
+        "chatSessionId": "sess_62880ff9-59d7-4a66-a3ff-ccaf7c05ea2b",
+        "timestamp": 1793365714015
+      }
+    ],
+    "3. Implement the Storage module": [
+      {
+        "executionId": "b5801705-a33e-414c-a5bf-021357fe2602",
+        "chatSessionId": "sess_62880ff9-59d7-4a66-a3ff-ccaf7c05ea2b",
+        "timestamp": 1793365714141
+      }
+    ],
+    "4.1 Implement `validateForm({ name, amount, category })` inside the IIFE namespace": [
+      {
+        "executionId": "482ee300-4a2f-47aa-aeff-12c351482055",
+        "chatSessionId": "sess_7a425c5c-e5d1-4f8e-b06a-a15c1a123958",
+        "timestamp": 1793365736472
+      },
+      {
+        "executionId": "482ee300-4a2f-47aa-aeff-12c351482055",
+        "chatSessionId": "sess_7a425c5c-e5d1-4f8e-b06a-a15c1a123958",
+        "timestamp": 1793366105724
+      }
+    ],
+    "4. Implement the Validator module": [
+      {
+        "executionId": "482ee300-4a2f-47aa-aeff-12c351482055",
+        "chatSessionId": "sess_7a425c5c-e5d1-4f8e-b06a-a15c1a123958",
+        "timestamp": 1793366105825
+      }
+    ],
+    "6.1 Implement `renderTransactionList(state)` — rebuild the `<ul>` contents from `state.transactions`": [
+      {
+        "executionId": "8421b5cd-14a8-4946-aef3-45828f5ffe76",
+        "chatSessionId": "sess_c432f89c-4621-4729-9ced-63835816eb98",
+        "timestamp": 1793366114368
+      },
+      {
+        "executionId": "8421b5cd-14a8-4946-aef3-45828f5ffe76",
+        "chatSessionId": "sess_c432f89c-4621-4729-9ced-63835816eb98",
+        "timestamp": 1793366207923
+      }
+    ],
+    "6.2 Implement `renderBalanceDisplay(state)` — compute the sum of all amounts and update the balance text node": [
+      {
+        "executionId": "60ccccab-c8c2-4cc0-a5d0-e1e7a223bb6d",
+        "chatSessionId": "sess_1bf31e3b-9a89-4d5c-9d92-fb6ded830f73",
+        "timestamp": 1793366236546
+      },
+      {
+        "executionId": "60ccccab-c8c2-4cc0-a5d0-e1e7a223bb6d",
+        "chatSessionId": "sess_1bf31e3b-9a89-4d5c-9d92-fb6ded830f73",
+        "timestamp": 1793366278460
+      }
+    ],
+    "6.3 Implement `showFormErrors(errors)` and `clearFormErrors()` — inject and remove inline error messages in the form": [
+      {
+        "executionId": "82461e6d-7163-42ea-8bfb-6d96c2a05ea1",
+        "chatSessionId": "sess_8372b24d-5fdc-418a-b910-877fdd41adc1",
+        "timestamp": 1793366286929
+      },
+      {
+        "executionId": "82461e6d-7163-42ea-8bfb-6d96c2a05ea1",
+        "chatSessionId": "sess_8372b24d-5fdc-418a-b910-877fdd41adc1",
+        "timestamp": 1793366353879
+      }
+    ],
+    "6.4 Implement `resetForm()` — clear item name to empty, amount to empty, category dropdown to unselected placeholder": [
+      {
+        "executionId": "6896d427-987c-4523-9436-219bf3befc2a",
+        "chatSessionId": "sess_98bf3bfa-63da-4a78-99e4-de2a01bf825d",
+        "timestamp": 1793366681887
+      },
+      {
+        "executionId": "6896d427-987c-4523-9436-219bf3befc2a",
+        "chatSessionId": "sess_98bf3bfa-63da-4a78-99e4-de2a01bf825d",
+        "timestamp": 1793366706077
+      }
+    ],
+    "6.5 Implement `renderAll(state)` — call `renderTransactionList`, `renderBalanceDisplay`, and `renderChart` in order": [
+      {
+        "executionId": "0671fec7-cce5-4300-aab4-68e33384733e",
+        "chatSessionId": "sess_41dd9a76-27cd-4c6c-a2ed-b9ab17ad3591",
+        "timestamp": 1793366741024
+      },
+      {
+        "executionId": "0671fec7-cce5-4300-aab4-68e33384733e",
+        "chatSessionId": "sess_41dd9a76-27cd-4c6c-a2ed-b9ab17ad3591",
+        "timestamp": 1793366776314
+      }
+    ],
+    "6. Implement the Renderer module": [
+      {
+        "executionId": "0671fec7-cce5-4300-aab4-68e33384733e",
+        "chatSessionId": "sess_41dd9a76-27cd-4c6c-a2ed-b9ab17ad3591",
+        "timestamp": 1793366776474
+      }
+    ],
+    "7. Implement the Chart module": [
+      {
+        "executionId": "56f3d774-cef8-4c10-bc02-e15309ebfb09",
+        "chatSessionId": "sess_f3403f3f-fbfb-4b6d-8f98-c3b95f0b30ca",
+        "timestamp": 1793366802363
+      },
+      {
+        "executionId": "56f3d774-cef8-4c10-bc02-e15309ebfb09",
+        "chatSessionId": "sess_f3403f3f-fbfb-4b6d-8f98-c3b95f0b30ca",
+        "timestamp": 1793366877797
+      }
+    ],
+    "9.1 Implement base layout and typography in `style.css`": [
+      {
+        "executionId": "f5d70255-9d33-4926-84d0-a0295abe7306",
+        "chatSessionId": "sess_791afd72-7b05-49c7-b412-a6eca1c04358",
+        "timestamp": 1793366889284
+      },
+      {
+        "executionId": "f5d70255-9d33-4926-84d0-a0295abe7306",
+        "chatSessionId": "sess_791afd72-7b05-49c7-b412-a6eca1c04358",
+        "timestamp": 1793367248008
+      }
+    ],
+    "9.2 Implement responsive layout and scrollable Transaction_List": [
+      {
+        "executionId": "e3a4c5c2-5031-46b8-92b2-fa2533b36768",
+        "chatSessionId": "sess_046a51dd-b287-401d-a056-197e827aaaab",
+        "timestamp": 1793367256796
+      },
+      {
+        "executionId": "e3a4c5c2-5031-46b8-92b2-fa2533b36768",
+        "chatSessionId": "sess_046a51dd-b287-401d-a056-197e827aaaab",
+        "timestamp": 1793367351780
+      }
+    ],
+    "9.3 Implement focus indicators and form control styles": [
+      {
+        "executionId": "ec437cdb-c30c-4a6c-81ad-a70d4c334b72",
+        "chatSessionId": "sess_5b86d9c2-84c2-412a-b460-469ce3f00b99",
+        "timestamp": 1793367360732
+      },
+      {
+        "executionId": "ec437cdb-c30c-4a6c-81ad-a70d4c334b72",
+        "chatSessionId": "sess_5b86d9c2-84c2-412a-b460-469ce3f00b99",
+        "timestamp": 1793367410479
+      }
+    ],
+    "9. Implement CSS styling": [
+      {
+        "executionId": "ec437cdb-c30c-4a6c-81ad-a70d4c334b72",
+        "chatSessionId": "sess_5b86d9c2-84c2-412a-b460-469ce3f00b99",
+        "timestamp": 1793367410584
+      }
+    ],
+    "10.1 Wire up the app entry point in `app.js` on `DOMContentLoaded`": [
+      {
+        "executionId": "ae9d8e51-dc55-48ec-9064-600c11be15ba",
+        "chatSessionId": "sess_c8348c27-084b-4550-baf6-8eb330fe19e8",
+        "timestamp": 1793367422156
+      },
+      {
+        "executionId": "ae9d8e51-dc55-48ec-9064-600c11be15ba",
+        "chatSessionId": "sess_c8348c27-084b-4550-baf6-8eb330fe19e8",
+        "timestamp": 1793367536079
+      }
+    ],
+    "10. Implement event wiring and app bootstrap": [
+      {
+        "executionId": "ae9d8e51-dc55-48ec-9064-600c11be15ba",
+        "chatSessionId": "sess_c8348c27-084b-4550-baf6-8eb330fe19e8",
+        "timestamp": 1793367536223
+      }
+    ],
+    "11.1 Extract a pure `computeBalance(transactions)` helper function used by `renderBalanceDisplay`": [
+      {
+        "executionId": "56dd21f8-3529-43f3-9ce4-f1962c117981",
+        "chatSessionId": "sess_44902585-c875-4bf6-9c53-9de3f116f4f0",
+        "timestamp": 1793367564637
+      },
+      {
+        "executionId": "56dd21f8-3529-43f3-9ce4-f1962c117981",
+        "chatSessionId": "sess_44902585-c875-4bf6-9c53-9de3f116f4f0",
+        "timestamp": 1793367623187
+      }
+    ],
+    "11. Implement balance computation with floating-point correctness": [
+      {
+        "executionId": "56dd21f8-3529-43f3-9ce4-f1962c117981",
+        "chatSessionId": "sess_44902585-c875-4bf6-9c53-9de3f116f4f0",
+        "timestamp": 1793367623303
+      }
+    ],
+    "12. Final checkpoint — full integration verified": [
+      {
+        "executionId": "5c285a58-c18a-41c8-a35d-d97edaf1cf92",
+        "chatSessionId": "sess_e296e4f9-dc95-4e2c-a7eb-c4eb6df27b31",
+        "timestamp": 1793367649069
+      }
+    ]
+  }
+}

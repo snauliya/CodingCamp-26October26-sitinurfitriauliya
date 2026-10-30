@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense and Budget Visualizer — Test Suite</title>
+    <style>
+        /* ── Reset & base ─────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 15px;
+            line-height: 1.5;
+            background: #f5f7fa;
+            color: #1a1a2e;
+            padding: 1.5rem;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+        .meta { color: #555; font-size: 0.875rem; margin-bottom: 1.5rem; }
+
+        /* ── Summary bar ──────────────────────────────────────────── */
+        #summary {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+        #summary .pass  { color: #27ae60; }
+        #summary .fail  { color: #c0392b; }
+        #summary .total { color: #555; }
+        #summary .status-badge {
+            margin-left: auto;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        #summary .status-badge.all-pass { background: #d5f5e3; color: #1e8449; }
+        #summary .status-badge.has-fail { background: #fadbd8; color: #922b21; }
+
+        /* ── Suite sections ───────────────────────────────────────── */
+        .suite {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        .suite-header {
+            padding: 0.75rem 1rem;
+            background: #1a1a2e;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .suite-header .badge {
+            font-size: 0.8rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.15);
+        }
+
+        /* ── Individual test rows ─────────────────────────────────── */
+        .test-row {
+            display: flex;
+            align-items: flex-start;
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid #f0f0f0;
+            gap: 0.75rem;
+        }
+        .test-row:last-child { border-bottom: none; }
+        .test-row .icon { font-size: 1rem; flex-shrink: 0; padding-top: 0.1rem; }
+        .test-row .name { flex: 1; }
+        .test-row .error {
+            font-size: 0.8rem;
+            color: #c0392b;
+            margin-top: 0.25rem;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .test-row.pass .icon::before { content: '✓'; color: #27ae60; }
+        .test-row.fail .icon::before { content: '✗'; color: #c0392b; }
+        .test-row.fail .name { font-weight: 600; color: #922b21; }
+
+        /* ── Stub DOM area (hidden from view) ─────────────────────── */
+        #test-dom-stubs {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Expense and Budget Visualizer — Test Suite</h1>
+<p class="meta">Unit tests + Property-based tests (fast-check) · Run in-browser, no build step needed</p>
+
+<!-- Live summary bar (filled by JS) -->
+<div id="summary">
+    <span class="total">Loading…</span>
+</div>
+
+<!-- Test results are rendered here -->
+<div id="results"></div>
+
+<!-- Hidden DOM stubs for renderer tests -->
+<div id="test-dom-stubs">
+    <!-- Balance display stub -->
+    <span id="balance-value"></span>
+    <!-- Transaction list stub -->
+    <ul id="transaction-list"></ul>
+    <!-- Form stubs (needed by clearFormErrors / showFormErrors) -->
+    <form id="transaction-form">
+        <input id="item-name"     type="text">
+        <span  id="name-error"    class="error-message"></span>
+        <input id="item-amount"   type="number">
+        <span  id="amount-error"  class="error-message"></span>
+        <select id="item-category">
+            <option value="">-- select --</option>
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Fun">Fun</option>
+        </select>
+        <span id="category-error" class="error-message"></span>
+    </form>
+    <!-- Canvas stub for chart tests -->
+    <canvas id="spending-chart" width="400" height="400"></canvas>
+    <p id="chart-unavailable" style="display:none;"></p>
+</div>
+
+<!--
+    Load fast-check UMD bundle first so `fc` is available globally
+    before app.js runs (app.js doesn't need fc but tests do).
+-->
+<script src="https://cdn.jsdelivr.net/npm/fast-check/lib/fast-check.min.js"></script>
+
+<!-- Load the application under test -->
+<script src="app.js"></script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     Test harness + all test suites
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+    'use strict';
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Minimal test harness
+    // ──────────────────────────────────────────────────────────────────────────
+
+    var totalPass = 0;
+    var totalFail = 0;
+    var resultEl  = document.getElementById('results');
+
+    /**
+     * Run a named suite of tests.
+     * @param {string} suiteName
+     * @param {Array<{name: string, fn: function}>} tests
+     */
+    function runSuite(suiteName, tests) {
+        var suitePass = 0;
+        var suiteFail = 0;
+        var rows = [];
+
+        tests.forEach(function (t) {
+            var pass = false;
+            var errMsg = '';
+            try {
+                t.fn();
+                pass = true;
+            } catch (e) {
+                errMsg = (e && (e.message || String(e)));
+                // fast-check surfaces the counterexample in `e.message`
+                if (e && e.counterexample) {
+                    errMsg += '\nCounterexample: ' + JSON.stringify(e.counterexample);
+                }
+            }
+
+            if (pass) { suitePass++; totalPass++; } else { suiteFail++; totalFail++; }
+
+            rows.push({ name: t.name, pass: pass, error: errMsg });
+        });
+
+        // Build suite DOM
+        var suite = document.createElement('div');
+        suite.className = 'suite';
+
+        var header = document.createElement('div');
+        header.className = 'suite-header';
+        header.innerHTML =
+            '<span>' + suiteName + '</span>' +
+            '<span class="badge">' + suitePass + '/' + (suitePass + suiteFail) + ' passed</span>';
+        suite.appendChild(header);
+
+        rows.forEach(function (r) {
+            var row  = document.createElement('div');
+            row.className = 'test-row ' + (r.pass ? 'pass' : 'fail');
+
+            var icon = document.createElement('span');
+            icon.className = 'icon';
+
+            var name = document.createElement('div');
+            name.className = 'name';
+            name.textContent = r.name;
+
+            row.appendChild(icon);
+            row.appendChild(name);
+
+            if (!r.pass && r.error) {
+                var err = document.createElement('div');
+                err.className = 'error';
+                err.textContent = r.error;
+                name.appendChild(err);
+            }
+
+            suite.appendChild(row);
+        });
+
+        resultEl.appendChild(suite);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Assertion helpers
+    // ──────────────────────────────────────────────────────────────────────────
+
+    function assert(condition, message) {
+        if (!condition) {
+            throw new Error(message || 'Assertion failed');
+        }
+    }
+
+    function assertEqual(actual, expected, message) {
+        if (actual !== expected) {
+            throw new Error(
+                (message || 'assertEqual') +
+                '\n  expected: ' + JSON.stringify(expected) +
+                '\n  actual:   ' + JSON.stringify(actual)
+            );
+        }
+    }
+
+    function assertDeepEqual(actual, expected, message) {
+        var a = JSON.stringify(actual);
+        var b = JSON.stringify(expected);
+        if (a !== b) {
+            throw new Error(
+                (message || 'assertDeepEqual') +
+                '\n  expected: ' + b +
+                '\n  actual:   ' + a
+            );
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Test-storage helpers
+    //
+    // The real STORAGE_KEY ('expense_budget_transactions') is a private constant
+    // inside app.js's IIFE.  For storage unit tests we call the real exported
+    // functions (App.saveTransactions / App.loadTransactions) and then clean up
+    // the real key afterwards so tests don't leave stale data behind.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    var REAL_STORAGE_KEY = 'expense_budget_transactions';
+
+    /**
+     * Backup the real storage key, run fn(), then restore the original data.
+     * This lets us test the real save/load functions without polluting state.
+     */
+    function withRealStorage(fn) {
+        var backup = localStorage.getItem(REAL_STORAGE_KEY);
+        try {
+            localStorage.removeItem(REAL_STORAGE_KEY); // start clean
+            fn();
+        } finally {
+            // Restore original data (or remove if there was none)
+            if (backup === null) {
+                localStorage.removeItem(REAL_STORAGE_KEY);
+            } else {
+                localStorage.setItem(REAL_STORAGE_KEY, backup);
+            }
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // fast-check arbitrary generators
+    // ──────────────────────────────────────────────────────────────────────────
+
+    var CATEGORIES = ['Food', 'Transport', 'Fun'];
+
+    /** Arbitrary for a valid item name (1–100 non-whitespace-only string) */
+    var arbName = fc.string({ minLength: 1, maxLength: 100 })
+        .filter(function (s) { return s.trim().length > 0; });
+
+    /** Arbitrary for a valid amount: float in (0, 999999999.99] */
+    var arbAmount = fc.float({ min: 0.01, max: 999999999.99, noNaN: true })
+        .filter(function (n) { return n > 0 && n <= 999999999.99; });
+
+    /** Arbitrary for a valid category */
+    var arbCategory = fc.constantFrom('Food', 'Transport', 'Fun');
+
+    /** Arbitrary for an ISO date string (recent) */
+    var arbDate = fc.date({
+        min: new Date('2020-01-01T00:00:00.000Z'),
+        max: new Date('2030-12-31T23:59:59.999Z')
+    }).map(function (d) { return d.toISOString(); });
+
+    /** Arbitrary for a valid Transaction object */
+    var arbTransaction = fc.record({
+        id:        fc.uuid(),
+        name:      arbName,
+        amount:    arbAmount,
+        category:  arbCategory,
+        dateAdded: arbDate
+    });
+
+    /** Arbitrary for an array of ≥ 0 valid transactions */
+    var arbTransactionList = fc.array(arbTransaction, { minLength: 0, maxLength: 20 });
+
+    /** Arbitrary for an array of ≥ 1 valid transactions */
+    var arbNonEmptyTransactionList = fc.array(arbTransaction, { minLength: 1, maxLength: 20 });
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SUITE 1: Validator — unit tests
+    // ══════════════════════════════════════════════════════════════════════════
+
+    runSuite('Validator — Unit Tests', [
+        {
+            name: 'Valid submission passes validation',
+            fn: function () {
+                var r = App.validateForm({ name: 'Coffee', amount: 4.5, category: 'Food' });
+                assert(r.valid === true, 'Expected valid: true');
+                assert(Object.keys(r.errors).length === 0, 'Expected no errors');
+            }
+        },
+        {
+            name: 'Empty name is rejected',
+            fn: function () {
+                var r = App.validateForm({ name: '', amount: 5, category: 'Food' });
+                assert(r.valid === false, 'Expected valid: false');
+                assert(r.errors.name, 'Expected errors.name to be set');
+            }
+        },
+        {
+            name: 'Whitespace-only name is rejected',
+            fn: function () {
+                var r = App.validateForm({ name: '   ', amount: 5, category: 'Food' });
+                assert(r.valid === false, 'Expected valid: false');
+                assert(r.errors.name, 'Expected errors.name to be set');
+            }
+        },
+        {
+            name: 'Amount = 0 is rejected',
+            fn: function () {
+                var r = App.validateForm({ name: 'Test', amount: 0, category: 'Food' });
+                assert(r.valid === false, 'Expected valid: false');
+                assert(r.errors.amount, 'Expected errors.amount to be set');
+            }
+        },
+        {
+            name: 'Negative amount is rejected',
+            fn: function () {
+                var r = App.validateForm({ name: 'Test', amount: -1, category: 'Food' });
+                assert(r.valid === false, 'Expected valid: false');
+                assert(r.errors.amount, 'Expected errors.amount to be set');
+            }
+        },
+        {
+            name: 'Amount > 999,999,999.99 is rejected',
+            fn: function () {
+                var r = App.validateForm({ name: 'Test', amount: 1000000000, category: 'Food' });
+                assert(r.valid === false, 'Expected valid: false');
+                assert(r.errors.amount, 'Expected errors.amount to be set');
+            }
+        },
+        {
+            name: 'Amount at max boundary (999,999,999.99) is accepted',
+            fn: function () {
+                var r = App.validateForm({ name: 'Big', amount: 999999999.99, category: 'Transport' });
+                assert(r.valid === true, 'Expected valid: true for max-boundary amount');
+            }
+        },
+        {
+            name: 'No category selected is rejected',
+            fn: function () {
+                var r = App.validateForm({ name: 'Test', amount: 5, category: '' });
+                assert(r.valid === false, 'Expected valid: false');
+                assert(r.errors.category, 'Expected errors.category to be set');
+            }
+        },
+        {
+            name: 'Invalid category string is rejected',
+            fn: function () {
+                var r = App.validateForm({ name: 'Test', amount: 5, category: 'Other' });
+                assert(r.valid === false, 'Expected valid: false');
+                assert(r.errors.category, 'Expected errors.category to be set');
+            }
+        },
+        {
+            name: 'Name longer than 100 chars is rejected',
+            fn: function () {
+                var longName = new Array(102).join('a'); // 101 chars
+                var r = App.validateForm({ name: longName, amount: 5, category: 'Food' });
+                assert(r.valid === false, 'Expected valid: false for name > 100 chars');
+                assert(r.errors.name, 'Expected errors.name to be set');
+            }
+        }
+    ]);
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SUITE 2: State module — unit tests
+    // ══════════════════════════════════════════════════════════════════════════
+
+    runSuite('State Module — Unit Tests', [
+        {
+            name: 'initState returns empty transaction array',
+            fn: function () {
+                var s = App.initState();
+                assertDeepEqual(s, { transactions: [] }, 'initState should return { transactions: [] }');
+            }
+        },
+        {
+            name: 'addTransaction appends tx and returns new state (does not mutate original)',
+            fn: function () {
+                var s0 = App.initState();
+                var tx = { id: '1', name: 'Coffee', amount: 3.5, category: 'Food', dateAdded: '2024-01-01T10:00:00.000Z' };
+                var s1 = App.addTransaction(s0, tx);
+                assertEqual(s0.transactions.length, 0, 'Original state should be unmodified');
+                assertEqual(s1.transactions.length, 1, 'New state should have 1 transaction');
+                assertDeepEqual(s1.transactions[0], tx, 'Added transaction should match input');
+            }
+        },
+        {
+            name: 'addTransaction with multiple entries preserves existing entries',
+            fn: function () {
+                var s0 = App.initState();
+                var tx1 = { id: '1', name: 'Coffee', amount: 3.5, category: 'Food',      dateAdded: '2024-01-01T10:00:00.000Z' };
+                var tx2 = { id: '2', name: 'Bus',    amount: 2.0, category: 'Transport', dateAdded: '2024-01-02T08:00:00.000Z' };
+                var s1 = App.addTransaction(s0, tx1);
+                var s2 = App.addTransaction(s1, tx2);
+                assertEqual(s2.transactions.length, 2, 'Should have 2 transactions');
+                assertEqual(s2.transactions[0].id, '1', 'First entry should still be tx1');
+                assertEqual(s2.transactions[1].id, '2', 'Second entry should be tx2');
+            }
+        },
+        {
+            name: 'deleteTransaction removes the correct entry by id',
+            fn: function () {
+                var tx1 = { id: 'a', name: 'A', amount: 1, category: 'Food',      dateAdded: '2024-01-01T00:00:00.000Z' };
+                var tx2 = { id: 'b', name: 'B', amount: 2, category: 'Transport', dateAdded: '2024-01-02T00:00:00.000Z' };
+                var s = App.hydrateState([tx1, tx2]);
+                var s2 = App.deleteTransaction(s, 'a');
+                assertEqual(s2.transactions.length, 1, 'Should have 1 transaction after delete');
+                assertEqual(s2.transactions[0].id, 'b', 'Remaining transaction should be tx2');
+            }
+        },
+        {
+            name: 'deleteTransaction does not mutate original state',
+            fn: function () {
+                var tx = { id: 'x', name: 'X', amount: 1, category: 'Fun', dateAdded: '2024-01-01T00:00:00.000Z' };
+                var s0 = App.hydrateState([tx]);
+                App.deleteTransaction(s0, 'x');
+                assertEqual(s0.transactions.length, 1, 'Original state should be unmodified');
+            }
+        },
+        {
+            name: 'deleteTransaction with unknown id returns unchanged transaction list',
+            fn: function () {
+                var tx = { id: 'x', name: 'X', amount: 1, category: 'Fun', dateAdded: '2024-01-01T00:00:00.000Z' };
+                var s0 = App.hydrateState([tx]);
+                var s1 = App.deleteTransaction(s0, 'unknown-id');
+                assertEqual(s1.transactions.length, 1, 'Transaction count should be unchanged');
+            }
+        },
+        {
+            name: 'hydrateState reconstructs correct state from raw array',
+            fn: function () {
+                var arr = [
+                    { id: '1', name: 'Coffee', amount: 3.5, category: 'Food',      dateAdded: '2024-01-01T10:00:00.000Z' },
+                    { id: '2', name: 'Bus',    amount: 2.0, category: 'Transport', dateAdded: '2024-01-02T08:00:00.000Z' }
+                ];
+                var s = App.hydrateState(arr);
+                assertEqual(s.transactions.length, 2, 'Should have 2 transactions');
+                assertDeepEqual(s.transactions[0], arr[0], 'First entry should match');
+                assertDeepEqual(s.transactions[1], arr[1], 'Second entry should match');
+            }
+        }
+    ]);
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SUITE 3: Storage module — unit tests
+    // ══════════════════════════════════════════════════════════════════════════
+
+    runSuite('Storage Module — Unit Tests', [
+        {
+            name: 'saveTransactions writes JSON to localStorage',
+            fn: function () {
+                withRealStorage(function () {
+                    var txList = [{ id: '1', name: 'Coffee', amount: 3.5, category: 'Food', dateAdded: '2024-01-01T10:00:00.000Z' }];
+                    App.saveTransactions(txList);
+                    var raw = localStorage.getItem(REAL_STORAGE_KEY);
+                    assert(raw !== null, 'Expected data to be written to localStorage');
+                    var parsed = JSON.parse(raw);
+                    assertEqual(parsed.length, 1, 'Parsed array should have 1 entry');
+                    assertEqual(parsed[0].name, 'Coffee', 'Name should be preserved');
+                });
+            }
+        },
+        {
+            name: 'loadTransactions reads and parses persisted data',
+            fn: function () {
+                withRealStorage(function () {
+                    var txList = [{ id: '1', name: 'Tea', amount: 2.0, category: 'Food', dateAdded: '2024-01-01T00:00:00.000Z' }];
+                    localStorage.setItem(REAL_STORAGE_KEY, JSON.stringify(txList));
+                    var result = App.loadTransactions();
+                    assertEqual(result.length, 1, 'Should load 1 transaction');
+                    assertEqual(result[0].name, 'Tea', 'Name should match');
+                });
+            }
+        },
+        {
+            name: 'loadTransactions returns [] when no data stored',
+            fn: function () {
+                withRealStorage(function () {
+                    // Key is already removed by withRealStorage; key is absent
+                    var result = App.loadTransactions();
+                    assertDeepEqual(result, [], 'Should return [] when key is absent');
+                });
+            }
+        },
+        {
+            name: 'loadTransactions returns [] on corrupted JSON',
+            fn: function () {
+                withRealStorage(function () {
+                    localStorage.setItem(REAL_STORAGE_KEY, 'NOT_VALID_JSON{{{');
+                    var result = App.loadTransactions();
+                    assertDeepEqual(result, [], 'Should return [] on malformed JSON');
+                });
+            }
+        },
+        {
+            name: 'saveTransactions then loadTransactions round-trips correctly',
+            fn: function () {
+                withRealStorage(function () {
+                    var txList = [
+                        { id: 'a', name: 'Lunch',  amount: 12.5, category: 'Food',      dateAdded: '2024-06-01T12:00:00.000Z' },
+                        { id: 'b', name: 'Subway', amount: 3.0,  category: 'Transport', dateAdded: '2024-06-01T08:00:00.000Z' }
+                    ];
+                    App.saveTransactions(txList);
+                    var loaded = App.loadTransactions();
+                    assertEqual(loaded.length, 2, 'Should load 2 transactions');
+                    assertEqual(loaded[0].id, 'a', 'First id should match');
+                    assertEqual(loaded[1].id, 'b', 'Second id should match');
+                });
+            }
+        }
+    ]);
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SUITE 4: Renderer module — unit tests
+    // ══════════════════════════════════════════════════════════════════════════
+
+    runSuite('Renderer Module — Unit Tests', [
+        {
+            name: 'computeBalance returns 0.00 for empty list',
+            fn: function () {
+                assertEqual(App.computeBalance([]), 0.00, 'Empty list should give 0.00');
+            }
+        },
+        {
+            name: 'computeBalance returns 0.00 for null/undefined',
+            fn: function () {
+                assertEqual(App.computeBalance(null), 0.00, 'null should give 0.00');
+                assertEqual(App.computeBalance(undefined), 0.00, 'undefined should give 0.00');
+            }
+        },
+        {
+            name: 'computeBalance sums amounts and rounds to 2 dp',
+            fn: function () {
+                var txs = [
+                    { id: '1', name: 'A', amount: 1.10, category: 'Food',      dateAdded: '' },
+                    { id: '2', name: 'B', amount: 2.20, category: 'Transport', dateAdded: '' }
+                ];
+                assertEqual(App.computeBalance(txs), 3.30, 'Sum of 1.10 + 2.20 should be 3.30');
+            }
+        },
+        {
+            name: 'computeBalance handles floating-point tricky case (0.1 + 0.2)',
+            fn: function () {
+                var txs = [
+                    { id: '1', name: 'A', amount: 0.1, category: 'Food', dateAdded: '' },
+                    { id: '2', name: 'B', amount: 0.2, category: 'Food', dateAdded: '' }
+                ];
+                var result = App.computeBalance(txs);
+                // 0.1 + 0.2 in floating-point = 0.30000000000000004; should round to 0.30
+                assertEqual(result, 0.30, '0.1 + 0.2 should round to 0.30');
+            }
+        },
+        {
+            name: 'renderBalanceDisplay shows $0.00 on empty state',
+            fn: function () {
+                var el = document.getElementById('balance-value');
+                App.renderBalanceDisplay({ transactions: [] });
+                assertEqual(el.textContent, '$0.00', 'Balance should display as $0.00');
+            }
+        },
+        {
+            name: 'renderBalanceDisplay updates after adding a transaction',
+            fn: function () {
+                var el = document.getElementById('balance-value');
+                var state = App.hydrateState([
+                    { id: '1', name: 'Test', amount: 15.99, category: 'Food', dateAdded: '2024-01-01T00:00:00.000Z' }
+                ]);
+                App.renderBalanceDisplay(state);
+                assertEqual(el.textContent, '$15.99', 'Balance should display $15.99');
+            }
+        },
+        {
+            name: 'renderBalanceDisplay shows $0.00 after all transactions deleted',
+            fn: function () {
+                var el = document.getElementById('balance-value');
+                var s0 = App.hydrateState([{ id: '1', name: 'X', amount: 5, category: 'Fun', dateAdded: '' }]);
+                var s1 = App.deleteTransaction(s0, '1');
+                App.renderBalanceDisplay(s1);
+                assertEqual(el.textContent, '$0.00', 'Balance should revert to $0.00 after delete');
+            }
+        },
+        {
+            name: 'renderTransactionList shows empty-state message when no transactions',
+            fn: function () {
+                var ul = document.getElementById('transaction-list');
+                App.renderTransactionList({ transactions: [] });
+                var emptyItem = ul.querySelector('.empty-state');
+                assert(emptyItem !== null, 'Expected .empty-state element in list');
+                assert(emptyItem.textContent.length > 0, 'Empty-state message should have text');
+            }
+        },
+        {
+            name: 'renderTransactionList renders all entries with name, amount, category',
+            fn: function () {
+                var ul = document.getElementById('transaction-list');
+                var txs = [
+                    { id: '1', name: 'Coffee', amount: 3.5,  category: 'Food',      dateAdded: '2024-01-01T10:00:00.000Z' },
+                    { id: '2', name: 'Bus',    amount: 2.0,  category: 'Transport', dateAdded: '2024-01-02T08:00:00.000Z' }
+                ];
+                App.renderTransactionList({ transactions: txs });
+                var items = ul.querySelectorAll('.transaction-item');
+                assertEqual(items.length, 2, 'Should render 2 items');
+                var names    = ul.querySelectorAll('.transaction-name');
+                var amounts  = ul.querySelectorAll('.transaction-amount');
+                assert(names[0].textContent === 'Coffee', 'First item name should be Coffee');
+                assert(amounts[0].textContent === '$3.50',  'First item amount should be $3.50');
+            }
+        },
+        {
+            name: 'renderTransactionList shows "Uncategorized" for invalid category',
+            fn: function () {
+                var ul = document.getElementById('transaction-list');
+                var txs = [
+                    { id: '3', name: 'Mystery', amount: 1.0, category: 'Unknown', dateAdded: '2024-01-01T00:00:00.000Z' }
+                ];
+                App.renderTransactionList({ transactions: txs });
+                var catSpan = ul.querySelector('.transaction-category');
+                assertEqual(catSpan.textContent, 'Uncategorized', 'Category should fall back to Uncategorized');
+            }
+        }
+    ]);
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SUITE 5: Property-Based Tests (fast-check)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Wrap a fast-check `fc.assert(fc.property(...))` call so it fits the
+     * runSuite synchronous test interface.  fc.assert throws on failure.
+     */
+    function pbt(name, fcAssertion) {
+        return { name: name, fn: fcAssertion };
+    }
+
+    runSuite('Property-Based Tests (fast-check, ≥ 100 runs each)', [
+
+        // ── P1: Storage round-trip preserves transaction data ──────────────
+        pbt('P1 · Storage round-trip preserves all transaction fields', function () {
+            // Feature: expense-budget-visualizer, Property 1: Storage round-trip preserves transaction data
+            fc.assert(
+                fc.property(arbTransactionList, function (txList) {
+                    var serialized   = JSON.stringify(txList);
+                    var deserialized = JSON.parse(serialized);
+                    // Check length
+                    if (deserialized.length !== txList.length) { return false; }
+                    // Check every field of every entry
+                    for (var i = 0; i < txList.length; i++) {
+                        var orig = txList[i];
+                        var copy = deserialized[i];
+                        if (
+                            copy.id        !== orig.id        ||
+                            copy.name      !== orig.name      ||
+                            copy.amount    !== orig.amount    ||
+                            copy.category  !== orig.category  ||
+                            copy.dateAdded !== orig.dateAdded
+                        ) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }),
+                { numRuns: 100 }
+            );
+        }),
+
+        // ── P2: Whitespace name rejection ──────────────────────────────────
+        pbt('P2 · Whitespace-only and empty names are always rejected', function () {
+            // Feature: expense-budget-visualizer, Property 2: Validation rejects whitespace-only and empty names
+            var arbWhitespaceName = fc.stringOf(
+                fc.constantFrom(' ', '\t', '\n', '\r', '\u00a0'),
+                { minLength: 0, maxLength: 50 }
+            );
+            fc.assert(
+                fc.property(arbWhitespaceName, function (name) {
+                    var r = App.validateForm({ name: name, amount: 1, category: 'Food' });
+                    return r.valid === false && !!r.errors.name;
+                }),
+                { numRuns: 100 }
+            );
+        }),
+
+        // ── P3: Out-of-range amount rejection ──────────────────────────────
+        pbt('P3 · Amounts ≤ 0 or > 999,999,999.99 are always rejected', function () {
+            // Feature: expense-budget-visualizer, Property 3: Validation rejects out-of-range amounts
+            var arbBadAmount = fc.oneof(
+                // numbers ≤ 0
+                fc.float({ min: -1e9, max: 0, noNaN: true }),
+                // numbers > 999,999,999.99
+                fc.float({ min: 1000000000, max: 1e12, noNaN: true })
+            );
+            fc.assert(
+                fc.property(arbBadAmount, function (amount) {
+                    var r = App.validateForm({ name: 'x', amount: amount, category: 'Food' });
+                    return r.valid === false && !!r.errors.amount;
+                }),
+                { numRuns: 100 }
+            );
+        }),
+
+        // ── P4: Adding a valid transaction grows the list by exactly one ───
+        pbt('P4 · addTransaction grows the list by exactly one', function () {
+            // Feature: expense-budget-visualizer, Property 4: Adding a valid transaction grows the list by exactly one
+            fc.assert(
+                fc.property(arbTransactionList, arbTransaction, function (existingTxs, newTx) {
+                    var state   = App.hydrateState(existingTxs);
+                    var original = state.transactions.length;
+                    var newState = App.addTransaction(state, newTx);
+                    // Length increased by exactly 1
+                    if (newState.transactions.length !== original + 1) { return false; }
+                    // The new transaction is present
+                    var found = newState.transactions.some(function (tx) {
+                        return tx.id === newTx.id;
+                    });
+                    return found;
+                }),
+                { numRuns: 100 }
+            );
+        }),
+
+        // ── P5: Deleting a transaction removes exactly that entry ──────────
+        pbt('P5 · deleteTransaction shrinks the list by exactly one and removes the entry', function () {
+            // Feature: expense-budget-visualizer, Property 5: Deleting a transaction removes exactly that entry
+            fc.assert(
+                fc.property(
+                    arbNonEmptyTransactionList,
+                    function (txList) {
+                        // Deduplicate by id so that each id is unique in this run
+                        // (prevents false failures when the generator produces duplicate UUIDs)
+                        var seen = {};
+                        var uniqueTxs = txList.filter(function (tx) {
+                            if (seen[tx.id]) { return false; }
+                            seen[tx.id] = true;
+                            return true;
+                        });
+                        if (uniqueTxs.length === 0) { return true; } // skip degenerate case
+
+                        // Pick the first item to delete (deterministic, avoids Math.random in PBT)
+                        var targetId = uniqueTxs[0].id;
+                        var state    = App.hydrateState(uniqueTxs);
+                        var newState = App.deleteTransaction(state, targetId);
+                        // Length decreased by exactly 1
+                        if (newState.transactions.length !== uniqueTxs.length - 1) { return false; }
+                        // The deleted id is no longer present
+                        var stillPresent = newState.transactions.some(function (tx) {
+                            return tx.id === targetId;
+                        });
+                        return !stillPresent;
+                    }
+                ),
+                { numRuns: 100 }
+            );
+        }),
+
+        // ── P6: Balance equals arithmetic sum rounded to 2 dp ─────────────
+        pbt('P6 · computeBalance equals arithmetic sum of all amounts (2 dp)', function () {
+            // Feature: expense-budget-visualizer, Property 6: Balance equals the arithmetic sum of all transaction amounts
+            fc.assert(
+                fc.property(arbTransactionList, function (txList) {
+                    var balance  = App.computeBalance(txList);
+                    var expected = parseFloat(
+                        txList.reduce(function (s, tx) { return s + tx.amount; }, 0).toFixed(2)
+                    );
+                    // Allow ±0.005 tolerance for floating-point rounding differences
+                    return Math.abs(balance - expected) < 0.005;
+                }),
+                { numRuns: 100 }
+            );
+        }),
+
+        // ── P7: Chart segment proportions match category totals ────────────
+        pbt('P7 · Chart segment angles are proportional to category totals', function () {
+            // Feature: expense-budget-visualizer, Property 7: Chart segment proportions match category totals
+            fc.assert(
+                fc.property(arbNonEmptyTransactionList, function (txList) {
+                    var state = App.hydrateState(txList);
+                    App.renderChart(state);
+
+                    var canvas = document.getElementById('spending-chart');
+                    var segments = canvas._chartSegments;
+
+                    // If renderChart stored no segments (e.g. all amounts 0), skip
+                    if (!segments || segments.length === 0) { return true; }
+
+                    // Compute per-category totals
+                    var totals = {};
+                    txList.forEach(function (tx) {
+                        if (!totals[tx.category]) { totals[tx.category] = 0; }
+                        totals[tx.category] += parseFloat(tx.amount) || 0;
+                    });
+                    var grandTotal = Object.keys(totals).reduce(function (s, k) { return s + totals[k]; }, 0);
+                    if (grandTotal <= 0) { return true; }
+
+                    var TWO_PI = 2 * Math.PI;
+                    for (var i = 0; i < segments.length; i++) {
+                        var seg   = segments[i];
+                        var expected = totals[seg.category] / grandTotal;
+                        var actual   = seg.sliceAngle / TWO_PI;
+                        // Tolerance 0.0001 (well within floating-point error for this use case)
+                        if (Math.abs(actual - expected) > 0.0001) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }),
+                { numRuns: 100 }
+            );
+        }),
+
+        // ── P8: Transaction list ordering is always ascending by insertion time
+        pbt('P8 · Transaction list ordering is always ascending by dateAdded', function () {
+            // Feature: expense-budget-visualizer, Property 8: Transaction list ordering is always ascending by insertion time
+            fc.assert(
+                fc.property(
+                    // Generate an ordered sequence of add and delete operations
+                    fc.array(
+                        fc.record({
+                            op:  fc.constantFrom('add', 'delete'),
+                            tx:  arbTransaction
+                        }),
+                        { minLength: 1, maxLength: 20 }
+                    ),
+                    function (ops) {
+                        var state = App.initState();
+
+                        ops.forEach(function (o) {
+                            if (o.op === 'add') {
+                                state = App.addTransaction(state, o.tx);
+                            } else {
+                                // Delete the first transaction if any exist
+                                if (state.transactions.length > 0) {
+                                    state = App.deleteTransaction(state, state.transactions[0].id);
+                                }
+                            }
+                        });
+
+                        // Simulate the sort that renderTransactionList applies (ascending dateAdded)
+                        var sorted = state.transactions.slice().sort(function (a, b) {
+                            return new Date(a.dateAdded) - new Date(b.dateAdded);
+                        });
+
+                        // Verify the sorted list is indeed non-descending by dateAdded
+                        for (var i = 1; i < sorted.length; i++) {
+                            var prev = new Date(sorted[i - 1].dateAdded).getTime();
+                            var curr = new Date(sorted[i].dateAdded).getTime();
+                            if (curr < prev) { return false; }
+                        }
+                        return true;
+                    }
+                ),
+                { numRuns: 100 }
+            );
+        })
+
+    ]);
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Render summary bar
+    // ──────────────────────────────────────────────────────────────────────────
+
+    var summaryEl  = document.getElementById('summary');
+    var allPassed  = totalFail === 0;
+    summaryEl.innerHTML =
+        '<span class="pass">✓ ' + totalPass + ' passed</span>' +
+        '<span class="fail">✗ ' + totalFail + ' failed</span>' +
+        '<span class="total">/ ' + (totalPass + totalFail) + ' total</span>' +
+        '<span class="status-badge ' + (allPassed ? 'all-pass' : 'has-fail') + '">' +
+            (allPassed ? '🎉 All tests passed' : '⚠ Some tests failed') +
+        '</span>';
+
+}());
+</script>
+
+</body>
+</html>
